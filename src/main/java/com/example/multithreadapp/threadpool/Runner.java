@@ -72,7 +72,7 @@ public class Runner {
         for (int i = 0 ; i < 500 ; i++) {
             Future<String> future = executorService.submit(() -> {
                     try
-                    {   Thread.sleep(10);
+                    {   Thread.sleep(10000);
                         return sendHttpRequest("http://127.0.0.1:8000/limited");
 
                     }
@@ -100,3 +100,5 @@ public class Runner {
         executorService.shutdown();
     }
 }
+
+
