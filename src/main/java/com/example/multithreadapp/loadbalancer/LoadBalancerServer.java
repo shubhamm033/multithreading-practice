@@ -18,10 +18,13 @@ public class LoadBalancerServer {
     ServerResource serverResource;
     private int currentServer = 0;
 
+    ExecutorService executorService;
 
 
     public LoadBalancerServer(ServerResource serverResource) {
+
         this.serverResource = serverResource;
+        this.executorService = Executors.newFixedThreadPool(3);
     }
 
 
@@ -30,7 +33,8 @@ public class LoadBalancerServer {
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
 
         // Define a context that listens to the root URL "/"
-        server.createContext("/", new RootHandler(new Util(this.serverResource)));
+        server.createContext("/", new RootHandler());
+
 
         // Define another context for a different route, e.g., "/hello"
 //        server.createContext("/hello", new HelloHandler());
@@ -44,66 +48,42 @@ public class LoadBalancerServer {
     }
 
 
-    class Util {
+    public HttpResponse<String> connectServer(Server server) {
+        HttpClient client = HttpClient.newHttpClient();
 
-        ServerResource serverResource;
-        ExecutorService executorService;
+        // Create HttpRequest
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(server.getUrl()))
+                .build();
 
+        try {
+            // Send the request and receive the response
+            HttpResponse<String> response = client.send(request,
+                    HttpResponse.BodyHandlers.ofString());
+            System.out.println("pinging server" + Thread.currentThread().getName()
+                    + " " + response);
+            return response;
 
-
-
-        public Util(ServerResource serverResource) {
-            this.serverResource = serverResource;
-            this.executorService = Executors.newFixedThreadPool(3);
-
+        } catch (Exception e) {
+            return null;
         }
 
-
-        public HttpResponse<String> connectServer(Server server) {
-            HttpClient client = HttpClient.newHttpClient();
-
-            // Create HttpRequest
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(server.getUrl()))
-                    .build();
-
-            try {
-                // Send the request and receive the response
-                HttpResponse<String> response = client.send(request,
-                        HttpResponse.BodyHandlers.ofString());
-                System.out.println("pinging server" + Thread.currentThread().getName()
-                        + " "+ response);
-                return response;
-
-            }
-            catch (Exception e) {
-                return null;
-            }
-
-        }
+    }
 
 
-         public Server nextServer() {
-             if (currentServer < serverResource.activeServer.size()) {
+    public Server nextServer() {
+        if (currentServer < serverResource.activeServer.size()) {
 //                 System.out.println(serverResource.activeServer.size());
-                 Server server = serverResource.activeServer.get(currentServer);
-                 currentServer++;
-                 return server;
-             }
-             currentServer = 1;
-             return serverResource.activeServer.get(0);
-
-         }
+            Server server = serverResource.activeServer.get(currentServer);
+            currentServer++;
+            return server;
+        }
+        currentServer = 1;
+        return serverResource.activeServer.get(0);
 
     }
 
     class RootHandler implements HttpHandler {
-
-        LoadBalancerServer.Util util;
-
-        public RootHandler(LoadBalancerServer.Util util) {
-            this.util = util;
-        }
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -111,10 +91,10 @@ public class LoadBalancerServer {
             Callable<HttpResponse<String>> callable = () -> {
 //                System.out.println("Callable Task started");
                 // Simulate some computation or processing
-               return util.connectServer(util.nextServer());
+                return connectServer(nextServer());
             };
 
-            Future<HttpResponse<String>> future = util.executorService.submit(callable);
+            Future<HttpResponse<String>> future = executorService.submit(callable);
 
             try {
                 // Retrieve the result from the Future (blocks until the result is available)
@@ -133,5 +113,5 @@ public class LoadBalancerServer {
         }
 
 
-}
+    }
 }

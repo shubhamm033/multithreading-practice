@@ -39,7 +39,8 @@ public class HealthCheck {
 
         }
        catch (Exception e) {
-            return 0;
+           System.out.println(e);
+           return 0;
        }
 
     }
