@@ -1,8 +1,11 @@
 package com.example.multithreadapp.threadpool;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -11,47 +14,44 @@ public class Runner {
 
     // Function to make an HTTP GET request and return the response as a String
     public static String sendHttpRequest(String targetUrl) throws Exception {
-        HttpURLConnection connection = null;
+
+        String jsonInputString = "{\"title\": \"sholay\", \"uploader_id\": \"1\"}";
+
+
+        String targetURL = targetUrl; // Replace with your target URL
+
+
+        // Create an instance of HttpClient
+        HttpClient client = HttpClient.newHttpClient();
+
+        // Build the HttpRequest
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(targetURL))
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonInputString))
+                .build();
 
         try {
-            // Create a connection to the URL
-            URL url = new URL(targetUrl);
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(5000);
+            // Send the request and get HttpResponse
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-            // Get the response code
-            int responseCode = connection.getResponseCode();
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                throw new RuntimeException("Failed with HTTP code: " + responseCode);
-            }
+            // Print response status code and body
+//            System.out.println("Response Code: " + response.statusCode());
+//            System.out.println("Response Body: " + response.body());
+            return response.body() + " " + response.statusCode();
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
 
-            // Read the response
-            BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-            StringBuilder response = new StringBuilder();
-            String inputLine;
-
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
-            }
-            in.close();
-
-            // Return the response as a String
-            return response.toString();
-
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
         }
+        return null;
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         // Create an ExecutorService with a thread pool of 5 threads
         // Create a ThreadPoolExecutor
-        int corePoolSize = 5;
-        int maxPoolSize = 10;
+        int corePoolSize = 30;
+        int maxPoolSize = 35;
         long keepAliveTime = 10;  // Time that idle threads will wait for new tasks before terminating
         TimeUnit unit = TimeUnit.SECONDS;
         BlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<>();
@@ -69,11 +69,12 @@ public class Runner {
         List<Future<String>> futures = new ArrayList<>();
 
         // Submit each task individually and handle as they complete
-        for (int i = 0 ; i < 500 ; i++) {
+        for (int i = 0 ; i < 5 ; i++) {
+            Thread.sleep(2000);
             Future<String> future = executorService.submit(() -> {
                     try
-                    {   Thread.sleep(10000);
-                        return sendHttpRequest("http://127.0.0.1:8000/limited");
+                    {   Thread.sleep(0);
+                        return sendHttpRequest("http://13.202.213.75:8000/api/video/watch/");
 
                     }
 
